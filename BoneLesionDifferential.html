@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        button {
+            margin: 10px;
+            transition: background-color 0.5s ease;
+        }
+
+        .correct {
+            background-color: #28a745 !important;
+            color: white;
+        }
+
+        .incorrect {
+            background-color: #dc3545 !important;
+            color: white;
+        }
+
+        /* Responsive Design */
+        @media only screen and (max-width: 600px) {
+            body {
+                font-size: 0.9rem;
+            }
+
+            h1, h2 {
+                font-size: 1.5rem;
+            }
+
+            button {
+                padding: 5px 10px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Theming */
+        body.light-theme {
+            background-color: #ffffff;
+            color: #333333;
+        }
+
+        body.dark-theme {
+            background-color: #333333;
+            color: #f1f1f1;
+        }
+
+        button.dark-theme {
+            background-color: #555555;
+            color: #f1f1f1;
+        }
+
+        button.dark-theme.correct {
+            background-color: #28a745 !important;
+        }
+
+        button.dark-theme.incorrect {
+            background-color: #dc3545 !important;
+        }
+
+        .progress-bar.dark-theme {
+            background-color: #555555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-5">
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle" class="btn btn-secondary mb-3">Toggle Dark Mode</button>
+        
+        <h1 class="text-center my-3">Bone Lesion Differential Diagnosis Game</h1>
+        <h2 id="question" class="text-center mb-4">Given the age range and bone lesion description, select the likely diagnoses.</h2>
+        <div class="progress mb-5">
+            <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0"
+                aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div id="options" class="d-flex flex-wrap justify-content-center"></div>
+    </div>
+    
+    <script>
+        let differentials = {
+            '0-10': {
+                'well-defined': ['Eosinophilic Granuloma', 'Simple Bone Cyst'],
+                'ill-defined': ['Eosinophilic Granuloma', 'Ewing Sarcoma', 'Osteosarcoma', 'Leukemia'],
+                'sclerotic': ['Osteosarcoma']
+            },
+            '10-20': {
+                'well-defined': ['Non-ossifying Fibroma', 'Osteoblastoma', 'Fibrous Dysplasia', 'Eosinophilic Granuloma', 'Simple Bone Cyst', 'Aneurysmal Bone Cyst', 'Chondroblastoma', 'Chondromyxoid Fibroma'],
+                'ill-defined': ['Ewing Sarcoma', 'Eosinophilic Granuloma', 'Osteosarcoma'],
+                'sclerotic': ['Osteosarcoma', 'Fibrous Dysplasia', 'Eosinophilic Granuloma', 'Osteoid Osteoma', 'Osteoblastoma']
+            },
+            '20-40': {
+                'well-defined': ['Giant Cell Tumor', 'Enchondroma', 'Chondrosarcoma', 'Hyperparathyroidism-related Brown Tumors', 'Osteoblastoma'],
+                'ill-defined': ['Giant Cell Tumor'],
+                'sclerotic': ['Enchondroma', 'Osteoid Osteoma', 'Bone Island', 'Parosteal Osteosarcoma', 'Non-ossifying Fibroma', 'Eosinophilic Granuloma', 'Simple Bone Cyst', 'Aneurysmal Bone Cyst', 'Chondroblastoma']
+            },
+            '40+': {
+                'well-defined': ['Metastases', 'Myeloma', 'Geode'],
+                'ill-defined': ['Metastases', 'Myeloma', 'Chondrosarcoma'],
+                'sclerotic': ['Metastases', 'Bone Island']
+            }
+        };
+
+        const healedLesions = ['Non-ossifying Fibroma', 'Eosinophilic Granuloma', 'Simple Bone Cyst', 'Aneurysmal Bone Cyst', 'Chondroblastoma'];
+
+        let currentAgeRange = null;
+        let currentLesionDescription = null;
+        let correctDiagnoses = new Set();
+
+        function newRound() {
+            let ageRanges = Object.keys(differentials);
+            currentAgeRange = ageRanges[Math.floor(Math.random() * ageRanges.length)];
+            let lesionDescriptions = Object.keys(differentials[currentAgeRange]);
+            currentLesionDescription = lesionDescriptions[Math.floor(Math.random() * lesionDescriptions.length)];
+            correctDiagnoses = new Set(differentials[currentAgeRange][currentLesionDescription]);
+
+            let article = currentLesionDescription.startsWith('ill') ? 'an' : 'a';
+            document.getElementById('question').textContent = `Given the age range ${currentAgeRange} and ${article} ${currentLesionDescription} bone lesion, select the likely diagnoses.`;
+
+            let btns = document.getElementsByClassName('option-btn');
+            for (let i = 0; i < btns.length; i++) {
+                btns[i].disabled = false;
+                btns[i].className = 'btn btn-primary option-btn';
+            }
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('progress-bar').className = 'progress-bar'; // Reset color of progress bar
+
+            // Reset the button text for healed lesions
+            for (let lesion of healedLesions) {
+                let btn = document.getElementById(lesion);
+                if (btn) {
+                    btn.textContent = lesion;
+                }
+            }
+        }
+
+
+        function checkAnswer(diagnosis) {
+            let btn = document.getElementById(diagnosis);
+            if (correctDiagnoses.has(diagnosis)) {
+                // Check if it's the specific condition where "healed" should be appended
+                if (healedLesions.includes(diagnosis) && currentAgeRange === '20-40' && currentLesionDescription === 'sclerotic') {
+                    btn.textContent = `(healed) ${diagnosis}`;
+                }
+                btn.className = 'btn correct option-btn';
+                btn.disabled = true;
+                correctDiagnoses.delete(diagnosis);
+                document.getElementById('progress-bar').style.width = `${100 * (1 - correctDiagnoses.size / differentials[currentAgeRange][currentLesionDescription].length)}%`;
+                if (!correctDiagnoses.size) {
+                    document.getElementById('progress-bar').className = 'progress-bar bg-success'; // Turn progress bar green
+                    setTimeout(newRound, 5000);
+                }
+            } else {
+                btn.className = 'btn incorrect option-btn';
+            }
+        }
+
+
+        window.onload = function() {
+            let allDiagnoses = [...new Set([].concat(...[].concat(...Object.values(differentials).map(obj => Object.values(obj)))))];
+            
+            allDiagnoses.sort();  // Sort the diagnoses alphabetically
+
+            for (let diagnosis of allDiagnoses) {
+                let btn = document.createElement('button');
+                btn.id = diagnosis;
+                btn.className = 'btn btn-primary option-btn';
+                btn.textContent = diagnosis;
+                btn.onclick = function() { checkAnswer(diagnosis); };
+                document.getElementById('options').appendChild(btn);
+            }
+            newRound();
+
+            // Set default theme
+            document.body.classList.add('light-theme');
+        };
+
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            let bodyElem = document.body;
+            if (bodyElem.classList.contains('dark-theme')) {
+                bodyElem.classList.remove('dark-theme');
+                bodyElem.classList.add('light-theme');
+            } else {
+                bodyElem.classList.remove('light-theme');
+                bodyElem.classList.add('dark-theme');
+            }
+        });
+
+    </script>
+</body>
+
+</html>
